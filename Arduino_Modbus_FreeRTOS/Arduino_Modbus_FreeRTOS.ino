@@ -7,7 +7,20 @@
 #include <Arduino_FreeRTOS.h>
 #include <semphr.h>
 
-SemaphoreHandle_t xModbusSemaphore;
+#include "Config.h"
+#include <Arduino.h>
+
+/// <summary>
+/// 离散输入信号 与 线圈输出信号 的绑定模式
+/// </summary>
+enum BindingMode :uint8_t
+{
+	Default = 0x00,		//无关联关系
+	Non_Lock = 0x01,	//非锁定，状态同步
+	Lock = 0x02,		//锁定
+	Only = 0x03,		//锁定，输出唯一状态
+};
+
 
 void TaskStatusOutput(void* pvParameters);	//输出状态指示灯
 void TaskDigitalWrite(void* pvParameters);	//离散输出，线圈状态
@@ -26,35 +39,18 @@ void setup()
 		;
 	}
 
-	if (xModbusSemaphore == NULL)  // Check to confirm that the Serial Semaphore has not already been created.
-	{
-		xModbusSemaphore = xSemaphoreCreateMutex();  // Create a mutex semaphore we will use to manage the Serial Port
-		if ((xModbusSemaphore) != NULL)
-			xSemaphoreGive((xModbusSemaphore));  // Make the Serial Port available for use, by "Giving" the Semaphore.
-	}
-
-	// Now set up two Tasks to run independently.
-	xTaskCreate(
-		TaskDigitalRead
-		, "DigitalRead"  // A name just for humans
-		, 128  // This stack size can be checked & adjusted by reading the Stack Highwater
-		, NULL //Parameters for the task
-		, 2  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-		, NULL); //Task Handle
-
-	xTaskCreate(
-		TaskAnalogRead
-		, "AnalogRead" // A name just for humans
-		, 128  // Stack size
-		, NULL //Parameters for the task
-		, 1  // Priority
-		, NULL); //Task Handle
-
 	//ModbusRTUServer Config
 	if (!ModbusRTUServer.begin(1, 9600))
 	{
 		while (1);
 	}
+
+	xTaskCreate(TaskRegisterRead, "RegisterRead", 64, NULL, 1, NULL);
+	xTaskCreate(TaskStatusOutput, "StatusOutput", 64, NULL, 2, NULL);
+	xTaskCreate(TaskDigitalRead, "DigitalRead", 64, NULL, 2, NULL);
+	xTaskCreate(TaskDigitalWrite, "DigitalWrite", 64, NULL, 2, NULL);
+	xTaskCreate(TaskAnalogRead, "AnalogRead", 64 , NULL, 2 , NULL);
+
 
 	ModbusRTUServer.configureHoldingRegisters(0x00, 1);
 
@@ -63,68 +59,94 @@ void setup()
 
 // the loop function runs over and over again until power down or reset
 void loop() 
-{
-	ModbusRTUServer.holdingRegisterWrite(0x00, 0);
+{	
 }
 
-
-void TaskDigitalRead(void* pvParameters __attribute__((unused)))  // This is a Task.
+void TaskStatusOutput(void* pvParameters)
 {
-	/*
-	  DigitalReadSerial
-	  Reads a digital input on pin 2, prints the result to the serial monitor
-	  This example code is in the public domain.
-	*/
-
-	// digital pin 2 has a pushbutton attached to it. Give it a name:
-	uint8_t pushButton = 2;
-
-	// make the pushbutton's pin an input:
-	pinMode(pushButton, INPUT);
-
-	for (;;) // A Task shall never return or exit.
-	{
-		// read the input pin:
-		int buttonState = digitalRead(pushButton);
-
-		// See if we can obtain or "Take" the Serial Semaphore.
-		// If the semaphore is not available, wait 5 ticks of the Scheduler to see if it becomes free.
-		if (xSemaphoreTake(xModbusSemaphore, (TickType_t)5) == pdTRUE)
-		{
-			// We were able to obtain or "Take" the semaphore and can now access the shared resource.
-			// We want to have the Serial Port for us alone, as it takes some time to print,
-			// so we don't want it getting stolen during the middle of a conversion.
-			// print out the state of the button:
-			Serial.println(buttonState);
-
-			xSemaphoreGive(xModbusSemaphore); // Now free or "Give" the Serial Port for others.
-		}
-
-		vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
-	}
-}
-
-void TaskAnalogRead(void* pvParameters __attribute__((unused)))  // This is a Task.
-{
+	pinMode(LED_BUILTIN, OUTPUT);
 
 	for (;;)
 	{
-		// read the input on analog pin 0:
-		int sensorValue = analogRead(A0);
+		digitalWrite(LED_BUILTIN, HIGH); 
+		vTaskDelay(500 / portTICK_PERIOD_MS); 
 
-		// See if we can obtain or "Take" the Serial Semaphore.
-		// If the semaphore is not available, wait 5 ticks of the Scheduler to see if it becomes free.
-		if (xSemaphoreTake(xModbusSemaphore, (TickType_t)5) == pdTRUE)
-		{
-			// We were able to obtain or "Take" the semaphore and can now access the shared resource.
-			// We want to have the Serial Port for us alone, as it takes some time to print,
-			// so we don't want it getting stolen during the middle of a conversion.
-			// print out the value you read:
-			Serial.println(sensorValue);
-
-			xSemaphoreGive(xModbusSemaphore); // Now free or "Give" the Serial Port for others.
-		}
-
-		vTaskDelay(1);  // one tick delay (15ms) in between reads for stability
+		digitalWrite(LED_BUILTIN, LOW);
+		vTaskDelay(500 / portTICK_PERIOD_MS);
 	}
 }
+
+void TaskRegisterRead(void* pvParameters)
+{
+	for (;;)
+	{
+		vTaskDelay(1);
+	}
+}
+
+void TaskDigitalWrite(void* pvParameters)
+{
+	uint8_t numCoils = sizeof(coilPins) / sizeof(uint8_t);
+	for (uint8_t i = 0; i < numCoils; i++)
+	{
+		pinMode(coilPins[i], OUTPUT);
+	}
+
+	for (;;)
+	{
+		for (uint8_t i = 0; i < numCoils; i++)
+		{
+			uint8_t coilValue = ModbusRTUServer.coilRead(i);
+			digitalWrite(coilPins[i], coilValue);
+		}
+	}
+}
+
+
+void TaskDigitalRead(void* pvParameters __attribute__((unused)))
+{
+	uint8_t numCoils = sizeof(coilPins) / sizeof(uint8_t);
+	uint8_t numDiscreteInputs = sizeof(discreteInputPins) / sizeof(uint8_t);
+	for (uint8_t i = 0; i < numDiscreteInputs; i++)
+	{
+		pinMode(discreteInputPins[i], DISCRETE_INPUT_MODE);
+	}
+
+	for (;;)
+	{
+		int8_t only_index = -1;
+		uint8_t minNum = min(numCoils, numDiscreteInputs);
+
+		for (uint8_t i = 0; i < numDiscreteInputs; i++)
+		{
+			bool newValue = digitalRead(discreteInputPins[i]) == (DISCRETE_INPUT_MODE == INPUT_PULLUP ? 0x00 : 0x01);
+			bool oldValue = ModbusRTUServer.discreteInputRead(i) == 0x01;
+			if (newValue != oldValue)	ModbusRTUServer.discreteInputWrite(i, newValue);
+
+		}
+
+		vTaskDelay(1);
+	}
+}
+
+#if CONFIG_USE_INPUT_REGISTERS
+void TaskAnalogRead(void* pvParameters __attribute__((unused)))  // This is a Task.
+{
+	uint8_t numInputRegisters = sizeof(inputRegisterPins) / sizeof(uint8_t);
+	for (uint8_t i = 0; i < numInputRegisters; i++)
+	{
+		pinMode(inputRegisterPins[i], INPUT);
+	}
+
+	for (;;)
+	{
+		for (uint8_t i = 0; i < numInputRegisters; i++)
+		{
+			uint16_t inputValue = analogRead(inputRegisterPins[i]);
+			ModbusRTUServer.inputRegisterWrite(i, inputValue);
+		}
+
+		vTaskDelay(1);
+	}
+}
+#endif

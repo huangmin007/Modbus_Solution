@@ -24,7 +24,7 @@
     <ClInclude Include="__vm\.Arduino_Modbus_FreeRTOS.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Arduino_Modbus_Template\Config.h">
+    <ClInclude Include="Config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
