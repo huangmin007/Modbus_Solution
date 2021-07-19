@@ -1,0 +1,47 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28917.181
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Modbus_Test", "Modbus_Test\Modbus_Test.csproj", "{64AFA8AC-ECBF-4A34-B449-49CAF9CE13D7}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arduino_Modbus_Template", "Arduino_Modbus_Template\Arduino_Modbus_Template.vcxproj", "{C5F80730-F44F-4478-BDAE-6634EFC2CA88}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arduino_Modbus_FreeRTOS", "Arduino_Modbus_FreeRTOS\Arduino_Modbus_FreeRTOS.vcxproj", "{9E6FE777-A016-4EA0-A57E-15602E4D0900}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{64AFA8AC-ECBF-4A34-B449-49CAF9CE13D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64AFA8AC-ECBF-4A34-B449-49CAF9CE13D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64AFA8AC-ECBF-4A34-B449-49CAF9CE13D7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{64AFA8AC-ECBF-4A34-B449-49CAF9CE13D7}.Debug|x86.Build.0 = Debug|Any CPU
+		{64AFA8AC-ECBF-4A34-B449-49CAF9CE13D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64AFA8AC-ECBF-4A34-B449-49CAF9CE13D7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{64AFA8AC-ECBF-4A34-B449-49CAF9CE13D7}.Release|x86.ActiveCfg = Release|Any CPU
+		{64AFA8AC-ECBF-4A34-B449-49CAF9CE13D7}.Release|x86.Build.0 = Release|Any CPU
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|x86.ActiveCfg = Debug|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|x86.Build.0 = Debug|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|Any CPU.ActiveCfg = Release|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|x86.ActiveCfg = Release|Win32
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|x86.Build.0 = Release|Win32
+		{9E6FE777-A016-4EA0-A57E-15602E4D0900}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{9E6FE777-A016-4EA0-A57E-15602E4D0900}.Debug|x86.ActiveCfg = Debug|Win32
+		{9E6FE777-A016-4EA0-A57E-15602E4D0900}.Debug|x86.Build.0 = Debug|Win32
+		{9E6FE777-A016-4EA0-A57E-15602E4D0900}.Release|Any CPU.ActiveCfg = Release|Win32
+		{9E6FE777-A016-4EA0-A57E-15602E4D0900}.Release|x86.ActiveCfg = Release|Win32
+		{9E6FE777-A016-4EA0-A57E-15602E4D0900}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A528AB99-33B3-4E79-A891-45D23CD9DCD0}
+	EndGlobalSection
+EndGlobal
