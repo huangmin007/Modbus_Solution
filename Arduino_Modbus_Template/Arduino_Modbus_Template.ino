@@ -14,6 +14,7 @@
 
 #include "Config.h"
 
+
 //================================= Configuration Check =====================================
 #if DEFAULT_SLAVE_ID <= 0x00 || DEFAULT_SLAVE_ID > 0xFE
 #error "DEFAULT_SLAVE_ID Öµ³¬³ö·¶Î§ 0x01~0xFE"
