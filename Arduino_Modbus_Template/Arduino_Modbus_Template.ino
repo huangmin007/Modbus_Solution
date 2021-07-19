@@ -71,10 +71,10 @@ BindingMode WorkMode = BindingMode(DEFAULT_WORK_MODE);			//¿Î…¢ ‰»Î”Îœﬂ»¶ ‰≥ˆµƒ∞
 uint8_t slave_id = DEFAULT_SLAVE_ID;							//…Ë±∏µÿ÷∑
 uint8_t baud_id = DEFAULT_BAUD_ID;								//≤®Ãÿ¬ À˜“˝
 
-uint32_t led_next_time = 0;
+uint32_t led_next_timer = 0;
 uint16_t led_interval_ms = DEFAULT_LED_INTERVAL;				//led ÷∏ æ…¡À∏º‰∏Ù ±º‰ ms
 
-uint32_t input_next_time = 0;
+uint32_t input_next_timer = 0;
 uint16_t input_interval_ms = DEFAULT_INPUT_INTERVAL;			//¿Î…¢ ‰»Î»•∂∂º‰∏Ù ±º‰ ms
 
 /// <summary>
@@ -240,13 +240,13 @@ void updateConfig()
 	if (ledValue != led_interval_ms)
 	{
 		led_interval_ms = ledValue;
-		led_next_time = timer0_millis + led_interval_ms; 
+		led_next_timer = timer0_millis + led_interval_ms; 
 		eeprom_write_word((uint16_t*)0x08, led_interval_ms);
 
 #if CONFIG_USE_LED_OUTPUT
 		if (led_interval_ms == 0x0000 || led_interval_ms == 0xFFFF)		//≥£¡¡ªÚ≥£±’◊¥Ã¨
 		{
-			digitalWrite(ledPin, led_interval_ms == 0xFFFF);
+			digitalWrite(LED_BUILTIN, led_interval_ms == 0xFFFF);
 		}
 #endif
 	}
@@ -275,13 +275,13 @@ void setup()
 	delay(100);
 	//clearEEPROM();
 
-#if USE_WDT
+#if CONFIG_USE_WDT
 	wdt_enable(WDTO_8S);
 #endif
 
 #if CONFIG_USE_LED_OUTPUT
-	pinMode(ledPin, OUTPUT);
-	digitalWrite(ledPin, LOW);
+	pinMode(LED_BUILTIN, OUTPUT);
+	digitalWrite(LED_BUILTIN, LOW);
 #endif
 	
 	readInitConfig();
@@ -341,33 +341,32 @@ void setup()
 	}
 
 #if CONFIG_USE_LED_OUTPUT
-	led_next_time = timer0_millis + led_interval_ms;
+	led_next_timer = timer0_millis + led_interval_ms;
 	if (led_interval_ms == 0x0000 || led_interval_ms == 0xFFFF)
 	{
-		digitalWrite(ledPin, led_interval_ms == 0xFFFF);
+		digitalWrite(LED_BUILTIN, led_interval_ms == 0xFFFF);
 	}
 #endif
 
-	input_next_time = timer0_millis + input_interval_ms;
+	input_next_timer = timer0_millis + input_interval_ms;
 }
 
 // the loop function runs over and over again until power down or reset
 void loop()
 {
-#if USE_WDT
+#if CONFIG_USE_WDT
 	wdt_reset();
 #endif
-
 
 	ModbusRTUServer.poll();
 	updateConfig();
 
 
 #if CONFIG_USE_LED_OUTPUT
-	if (led_interval_ms != 0x0000 && led_interval_ms != 0xFFFF && timer0_millis > led_next_time)
+	if (led_interval_ms != 0x0000 && led_interval_ms != 0xFFFF && timer0_millis > led_next_timer)
 	{
-		digitalWrite(ledPin, !digitalRead(ledPin));
-		led_next_time = timer0_millis + led_interval_ms;
+		digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+		led_next_timer = timer0_millis + led_interval_ms;
 	}
 #endif	
 
@@ -392,7 +391,7 @@ void loop()
 
 #if CONFIG_USE_DISCRETE_INPUTS
 
-	if (timer0_millis < input_next_time) return;
+	if (timer0_millis < input_next_timer) return;
 
 	int8_t only_index = -1;
 	uint8_t minNum = min(numCoils, numDiscreteInputs);
@@ -426,7 +425,7 @@ void loop()
 #endif
 	}	
 
-	input_next_time = timer0_millis + input_interval_ms;
+	input_next_timer = timer0_millis + input_interval_ms;
 #endif
 
 	

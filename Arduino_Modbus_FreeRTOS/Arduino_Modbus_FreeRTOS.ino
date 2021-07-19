@@ -22,11 +22,11 @@ enum BindingMode :uint8_t
 };
 
 
-void TaskStatusOutput(void* pvParameters);	// ‰≥ˆ◊¥Ã¨÷∏ æµ∆
-void TaskDigitalWrite(void* pvParameters);	//¿Î…¢ ‰≥ˆ£¨œﬂ»¶◊¥Ã¨
-void TaskDigitalRead(void* pvParameters);	//¿Î…¢ ‰»Î
-void TaskAnalogRead(void* pvParameters);	// ‰»Îºƒ¥Ê∆˜
-void TaskRegisterRead(void* pvParameters);	
+//void TaskStatusOutput(void* pvParameters);	// ‰≥ˆ◊¥Ã¨÷∏ æµ∆
+//void TaskDigitalWrite(void* pvParameters);	//¿Î…¢ ‰≥ˆ£¨œﬂ»¶◊¥Ã¨
+//void TaskDigitalRead(void* pvParameters);	//¿Î…¢ ‰»Î
+//void TaskAnalogRead(void* pvParameters);	// ‰»Îºƒ¥Ê∆˜
+//void TaskRegisterRead(void* pvParameters);	
 
 
 
@@ -45,11 +45,12 @@ void setup()
 		while (1);
 	}
 
-	xTaskCreate(TaskRegisterRead, "RegisterRead", 64, NULL, 1, NULL);
+	//xTaskCreate(TaskRegisterRead, "RegisterRead", 32, NULL, 1, NULL);
 	xTaskCreate(TaskStatusOutput, "StatusOutput", 64, NULL, 2, NULL);
-	xTaskCreate(TaskDigitalRead, "DigitalRead", 64, NULL, 2, NULL);
-	xTaskCreate(TaskDigitalWrite, "DigitalWrite", 64, NULL, 2, NULL);
-	xTaskCreate(TaskAnalogRead, "AnalogRead", 64 , NULL, 2 , NULL);
+
+	//xTaskCreate(TaskDigitalRead, "DigitalRead", 32, NULL, 2, NULL);
+	//xTaskCreate(TaskDigitalWrite, "DigitalWrite", 32, NULL, 2, NULL);
+	//xTaskCreate(TaskAnalogRead, "AnalogRead", 32, NULL, 2 , NULL);
 
 
 	ModbusRTUServer.configureHoldingRegisters(0x00, 1);
@@ -69,10 +70,10 @@ void TaskStatusOutput(void* pvParameters)
 	for (;;)
 	{
 		digitalWrite(LED_BUILTIN, HIGH); 
-		vTaskDelay(500 / portTICK_PERIOD_MS); 
+		vTaskDelay(100 / portTICK_PERIOD_MS); 
 
 		digitalWrite(LED_BUILTIN, LOW);
-		vTaskDelay(500 / portTICK_PERIOD_MS);
+		vTaskDelay(100 / portTICK_PERIOD_MS);
 	}
 }
 
