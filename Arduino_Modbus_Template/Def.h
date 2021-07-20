@@ -1,8 +1,10 @@
 #pragma once
 
-#define		CONFIG_REGISTER_COUNT		8
+#define		ARDUINO_VERSION				0x0101		//固件版本号，高字节表示大版本号，低字节小版本号
+#define		CONFIG_REGISTER_COUNT		8			//参数配置数据数量
 
-struct ConfigRegister_s
+#pragma pack (1)
+struct DeviceConfig_s
 {
 	uint16_t version;	//固件版本号
 	uint16_t slaveId;	//设备地址
@@ -12,9 +14,13 @@ struct ConfigRegister_s
 	uint16_t reserve0;	//保留 0
 	uint16_t reserve1;	//保留 1
 	uint16_t reserve2;	//保留 2
-} ConfigRegister_default = { ARDUINO_VERSION , DEFAULT_SLAVE_ID ,DEFAULT_BAUD_ID , 0x0000, 0x0001, INCHING_INTERVAL_MS, 0x0000, 0x0000 };
+} DeviceConfig_default = { ARDUINO_VERSION , DEFAULT_SLAVE_ID ,DEFAULT_BAUD_ID , 0x0000, 0x0000, INCHING_INTERVAL_MS, 0x0000, 0x0000 };
+#pragma pack ()
 
-typedef struct ConfigRegister_s ConfigRegister;
+/// <summary>
+/// 设备配置项
+/// </summary>
+typedef struct DeviceConfig_s DeviceConfig;
 
 
 /// <summary>
@@ -31,23 +37,24 @@ enum BindingMode :uint8_t
 
 
 //设备受支持的波特率
-constexpr uint32_t BAUD_RATE[] = { 9600, 19200, 38400, 115200, 230400, 460800, 921600 };
+constexpr unsigned long BAUD_RATE[] = { 9600, 19200, 38400, 115200, 230400, 460800, 921600 };
 
 
 /// <summary>
-/// reset Arduino
+/// Reset Arduino
 /// </summary>
 void (*resetArduino)() = 0x0000;
 //void resetArduino() { __asm__ __volatile__("jmp 0"); }
 
 
 /// <summary>
-/// clear EEPROM
+/// Clear EEPROM
 /// </summary>
 void clearEEPROM()
 {
-	for (int i = 0; i < E2END + 1; i++)
+	for (int i = 0; i < 512/*E2END + 1*/; i++)
 	{
 		eeprom_write_byte((uint8_t*)i, 0x00);
 	}
+	delay(200);
 }
