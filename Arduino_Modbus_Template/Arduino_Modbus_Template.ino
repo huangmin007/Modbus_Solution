@@ -13,7 +13,7 @@
 #include <avr/eeprom.h>
 
 #include "Config.h"
-
+#include "Def.h"
 
 //================================= Configuration Check =====================================
 #if DEFAULT_SLAVE_ID <= 0x00 || DEFAULT_SLAVE_ID > 0xFE
@@ -44,68 +44,49 @@
 #endif
 //================================= Configuration Check =====================================
 
-/// <summary>
-/// 离散输入信号 与 线圈输出信号 的绑定模式
-/// </summary>
-enum BindingMode :uint8_t
-{
-	Default = 0x00,		//无关联关系
-	Non_Lock = 0x01,	//非锁定，状态同步
-	Lock = 0x02,		//锁定
-	Only = 0x03,		//锁定，输出唯一状态
-};
+
 
 // = millis()
 extern volatile unsigned long timer0_millis;
-//设备受支持的波特率
-constexpr uint32_t BAUD_RATE[] = { 9600, 19200, 38400, 115200, 230400, 460800, 921600 };
 
 uint8_t numCoils = 0;				//线圈状态数量
 uint8_t numDiscreteInputs = 0;		//离散输入数量
 uint8_t numInputRegisters = 0;		//输入寄存器数量
-constexpr uint8_t numHoldingRegisters = 8;	//保持寄存器数量
+uint8_t numHoldingRegisters = 0;	//保持寄存器数量，输入/输出模式
 
-uint16_t run_count = 0;											//设备运行次数
-BindingMode WorkMode = BindingMode(DEFAULT_WORK_MODE);			//离散输入与线圈输出的绑定模式
+//constexpr uint16_t configRegisters[] = { ARDUINO_VERSION , DEFAULT_SLAVE_ID ,DEFAULT_BAUD_ID , 0x0000, 0x0001, 0x0000, 0x0000, 0x0000};
 
-uint8_t slave_id = DEFAULT_SLAVE_ID;							//设备地址
-uint8_t baud_id = DEFAULT_BAUD_ID;								//波特率索引
+
+ConfigRegister configRegister = ConfigRegister_default;
+
+uint16_t* workModes;			//输入/输出工作模式数组
+int32_t* workModeArgs;
+
+//uint16_t run_count = 0;											//设备运行次数
+//BindingMode WorkMode = BindingMode(DEFAULT_WORK_MODE);			//离散输入与线圈输出的绑定模式
+
+//uint8_t slave_id = DEFAULT_SLAVE_ID;							//设备地址
+//uint8_t baud_id = DEFAULT_BAUD_ID;								//波特率索引
 
 uint32_t led_next_timer = 0;
-uint16_t led_interval_ms = DEFAULT_LED_INTERVAL;				//led 指示闪烁间隔时间 ms
+//uint16_t led_interval_ms = LED_TRUN_INTERVAL_MS;				//led 指示闪烁间隔时间 ms
 
 uint32_t input_next_timer = 0;
-uint16_t input_interval_ms = DEFAULT_INPUT_INTERVAL;			//离散输入去抖间隔时间 ms
+//uint16_t input_interval_ms = DINPUT_SHAKE_INTERVAL_MS;			//离散输入去抖间隔时间 ms
 
-/// <summary>
-/// reset Arduino
-/// </summary>
-void (*resetArduino)() = 0x0000;
-//void resetArduino() { __asm__ __volatile__("jmp 0"); }
 
-/// <summary>
-/// clear EEPROM
-/// </summary>
-void clearEEPROM()
-{
-	for (int i = 0; i < E2END + 1; i++)
-	{
-		eeprom_write_byte((uint8_t*)i, 0x00);
-	}
-}
 
 /// <summary>
 /// reset config，恢复到默认的参数
 /// </summary>
 void resetConfig()
 {
-	eeprom_write_word((uint16_t*)0x00, 0x01);
-	eeprom_write_byte((uint8_t*)0x02, DEFAULT_SLAVE_ID);
-	eeprom_write_byte((uint8_t*)0x03, DEFAULT_BAUD_ID);
-	eeprom_write_byte((uint8_t*)0x04, DEFAULT_WORK_MODE);
-	eeprom_write_byte((uint8_t*)0x05, 0x00);
-	eeprom_write_word((uint16_t*)0x06, DEFAULT_INPUT_INTERVAL);
-	eeprom_write_word((uint16_t*)0x08, DEFAULT_LED_INTERVAL);
+	uint8_t blockSize = sizeof(ConfigRegister);
+	ConfigRegister defaultConfig = ConfigRegister_default;
+
+	eeprom_write_block(&defaultConfig, (uint16_t*)0x00, blockSize);
+	for (uint8_t i = 0; i < numHoldingRegisters; i += 2)
+		eeprom_write_word((uint16_t*)(blockSize + i), 0x0000);
 
 	delay(100);
 	resetArduino();
@@ -117,156 +98,107 @@ void resetConfig()
 /// </summary>
 void readInitConfig()
 {
-	//0x00~0x01
-	run_count = eeprom_read_word((uint16_t*)0x00);
-	if (run_count == 0x0000 || run_count == 0xFFFF)	//如果运行次数 达到 65535 次，恢复出厂参数
-	{
+	uint8_t blockSize = sizeof(ConfigRegister);
+	eeprom_read_block(&configRegister, (uint16_t*)0x00, blockSize);
+
+	if (configRegister.runCount == 0x0000 || configRegister.runCount == 0xFFFF)
 		resetConfig();
-	}
 	else
+		configRegister.runCount++;
+
+	if (configRegister.reset != 0x0000) configRegister.reset = 0x0000;
+	if (configRegister.version != ARDUINO_VERSION)	configRegister.version = ARDUINO_VERSION;
+	if (configRegister.baudId > sizeof(BAUD_RATE) / sizeof(uint32_t)) configRegister.baudId = DEFAULT_BAUD_ID;
+	if (configRegister.slaveId == 0x00 || configRegister.slaveId == 0xFF) configRegister.slaveId = DEFAULT_SLAVE_ID;
+
+	if (numHoldingRegisters > 0)
 	{
-		run_count = run_count + 1;
-		eeprom_write_word(0x00, run_count);
+		for (uint8_t i = 0; i < numHoldingRegisters; i++)
+		{
+			workModes[i] = eeprom_read_word((uint16_t*)(blockSize + i));
+		}
 	}
 
-	//0x02 设备地址，或设备ID
-	slave_id = eeprom_read_byte((uint8_t*)0x02);
-	if (slave_id == 0x00 || slave_id == 0xFF)
-	{
-		slave_id = DEFAULT_SLAVE_ID;
-		eeprom_write_byte((uint8_t*)0x02, slave_id);
-	}
-
-	//0x03	波特率ID
-	baud_id = eeprom_read_byte((uint8_t*)0x03);
-	if (baud_id > sizeof(BAUD_RATE) / sizeof(uint32_t))
-	{
-		baud_id = DEFAULT_BAUD_ID;
-		eeprom_write_byte((uint8_t*)0x03, baud_id);
-	}
-
-	//0x04	工作模式，离散输入与离散输出的绑定模式
-	WorkMode = (BindingMode)eeprom_read_byte((uint8_t*)0x04);
-	if (WorkMode > BindingMode::Only)
-	{
-		WorkMode = BindingMode::Default;
-		eeprom_write_byte((uint8_t*)0x04, (uint8_t)WorkMode);
-	}
-
-	//0x05 reserve 在此保留一个字节
-	
-	//0x06~0x07 离散输入去抖时间
-	input_interval_ms = eeprom_read_word((uint16_t*)0x06);
-	if (input_interval_ms > INPUT_INTERVAL_MAX)
-	{
-		input_interval_ms = DEFAULT_INPUT_INTERVAL;
-		eeprom_write_word((uint16_t*)0x06, input_interval_ms);
-	}
-	
-	//0x08~0x09	led输出间隔时间
-	led_interval_ms = eeprom_read_word((uint16_t*)0x08);
-
-	delay(200);
+	delay(100);
+	eeprom_write_block(&configRegister, (uint16_t*)0x00, sizeof(ConfigRegister));
 }
 
 /// <summary>
 /// read register and update config
 /// </summary>
-void updateConfig()
+void readUpdateConfig()
 {
-	uint8_t slaveId = ModbusRTUServer.holdingRegisterRead(0x00);	//从保持寄存器中读取的设备地址
-	uint8_t baudId = ModbusRTUServer.holdingRegisterRead(0x01);		//从保持寄存器中读取的波特率ID
-	uint8_t reset = ModbusRTUServer.holdingRegisterRead(0x02);		//从保持寄存器中读取的 Reset 状态
-	uint8_t workMode = ModbusRTUServer.holdingRegisterRead(0x03);	//从保持寄存器中读取的工作模式
-	uint16_t inputValue = ModbusRTUServer.holdingRegisterRead(0x04);//从保持寄存器中读取的离散输入去抖时间
-	uint16_t ledValue = ModbusRTUServer.holdingRegisterRead(0x05);	//从保持寄存器中读取的led闪烁间隔时间
-	uint16_t runCount = ModbusRTUServer.holdingRegisterRead(0x06);	//从保持寄存器中读取的运行次数，写无效
+	bool updateWrite = false;
+	uint8_t blockSize = sizeof(ConfigRegister);
 
-	if (slaveId != slave_id)
-	{
-		if (slaveId != 0x00 || slaveId != 0xFE || slaveId != 0xFF)
-		{
-			slave_id = slaveId;
-			eeprom_write_byte((uint8_t*)0x02, slave_id);
-		}
-		else
-		{
-			ModbusRTUServer.holdingRegisterWrite(0x00, slave_id);
-		}
-	}
+	uint16_t holding[CONFIG_REGISTER_COUNT] = {};
+	ConfigRegister* config = (ConfigRegister*)holding;
 
-	if (baudId != baud_id)
-	{
-		if (baudId < sizeof(BAUD_RATE) / sizeof(uint32_t))
-		{
-			baud_id = baudId;
-			eeprom_write_byte((uint8_t*)0x03, baud_id);
-		}
-		else
-		{
-			ModbusRTUServer.holdingRegisterWrite(0x01, baud_id);
-		}
-	}
+	for (uint8_t i = 0; i < CONFIG_REGISTER_COUNT; i++)
+		holding[i] = ModbusRTUServer.holdingRegisterRead(i);
 
-	if (workMode != WorkMode)
-	{
-		if (workMode <= BindingMode::Only)
-		{
-			WorkMode = (BindingMode)workMode;
-			eeprom_write_byte((uint8_t*)0x04, (uint8_t)workMode);
-
-			for(uint8_t i = 0; i < numCoils; i ++)
-				ModbusRTUServer.coilWrite(i, 0x00);
-		}
-		else
-		{
-			ModbusRTUServer.holdingRegisterWrite(0x03, WorkMode);
-		}
-	}
-
-	if (inputValue != input_interval_ms)
-	{
-		if (inputValue <= INPUT_INTERVAL_MAX)
-		{
-			input_interval_ms = inputValue;
-			eeprom_write_word((uint16_t*)0x06, input_interval_ms);
-		}
-		else
-		{
-			ModbusRTUServer.holdingRegisterWrite(0x04, input_interval_ms);
-		}
-	}
-
-	if (ledValue != led_interval_ms)
-	{
-		led_interval_ms = ledValue;
-		led_next_timer = timer0_millis + led_interval_ms; 
-		eeprom_write_word((uint16_t*)0x08, led_interval_ms);
-
-#if CONFIG_USE_LED_OUTPUT
-		if (led_interval_ms == 0x0000 || led_interval_ms == 0xFFFF)		//常亮或常闭状态
-		{
-			digitalWrite(LED_BUILTIN, led_interval_ms == 0xFFFF);
-		}
-#endif
-	}
-
-	//写无效
-	if (runCount != run_count)
-	{
-		ModbusRTUServer.holdingRegisterWrite(0x06, run_count);
-	}
+	if (config->version != configRegister.version)
+		ModbusRTUServer.holdingRegisterWrite(0x00, ARDUINO_VERSION);
+	if (config->runCount != configRegister.runCount)
+		ModbusRTUServer.holdingRegisterWrite(0x04, configRegister.runCount);
 
 	//Reset
-	if (reset == 0x01)
+	if (config->reset == 0x01)
 	{
 		resetArduino();
-		//asm volatile("jmp 0");
 	}
-	else if (reset == 0xFF)
+	else if (config->reset == 0xFF)
 	{
 		resetConfig();
 	}
+
+	if (config->slaveId != configRegister.slaveId)
+	{
+		if (config->slaveId != 0x00 || config->slaveId != 0xFF)
+		{
+			updateWrite = true;
+			configRegister.slaveId = config->slaveId;
+		}
+		else
+		{
+			ModbusRTUServer.holdingRegisterWrite(0x01, configRegister.slaveId);
+		}
+	}
+	
+	if (config->baudId != configRegister.baudId)
+	{
+		if (config->baudId < sizeof(BAUD_RATE) / sizeof(uint32_t))
+		{
+			updateWrite = true;
+			configRegister.baudId = config->baudId;
+		}
+		else
+		{
+			ModbusRTUServer.holdingRegisterWrite(0x02, configRegister.baudId);
+		}
+	}
+
+	if(updateWrite)
+		eeprom_write_block(&configRegister, (uint16_t*)0x00, sizeof(ConfigRegister));
+
+	if (numHoldingRegisters == 0) return;
+	for (uint8_t i = 0; i < numHoldingRegisters; i++)
+	{
+		//arg(uint8_t) | mode(uint8_t)
+		uint16_t mode = ModbusRTUServer.holdingRegisterRead(CONFIG_REGISTER_COUNT + i);
+		if (mode != workModes[i])
+		{
+			if ((mode & 0xFF) <= BindingMode::Only)
+			{
+				workModes[i] = mode;
+				eeprom_write_word((uint16_t*)(blockSize + i), workModes[i]);
+			}
+			else
+			{
+				ModbusRTUServer.holdingRegisterWrite(CONFIG_REGISTER_COUNT + i, workModes[i]);
+			}
+		}
+	}	
 }
 
 // the setup function runs once when you press reset or power the board
@@ -274,20 +206,10 @@ void setup()
 {
 	delay(100);
 	//clearEEPROM();
-
-#if CONFIG_USE_WDT
-	wdt_enable(WDTO_8S);
-#endif
-
-#if CONFIG_USE_LED_OUTPUT
-	pinMode(LED_BUILTIN, OUTPUT);
-	digitalWrite(LED_BUILTIN, LOW);
-#endif
 	
-	readInitConfig();
-
-	Serial.begin(BAUD_RATE[baud_id]);
-	while (!Serial);
+#if CONFIG_USE_WDT
+	wdt_enable(WDTO_4S);
+#endif
 
 #if CONFIG_USE_COILS	//配置线圈，数字输出信号
 	numCoils = sizeof(coilPins) / sizeof(uint8_t);
@@ -306,15 +228,48 @@ void setup()
 #endif
 
 #if CONFIG_USE_INPUT_REGISTERS	//配置输入寄存器，模拟输入信号(0~5V)
-	numInputRegisters = sizeof(inputRegisterPins) / sizeof(uint8_t);	
+	numInputRegisters = sizeof(inputRegisterPins) / sizeof(uint8_t);
 	for (uint8_t i = 0; i < numInputRegisters; i++)
 	{
 		pinMode(inputRegisterPins[i], INPUT);
 	}
 #endif
 
+#if CONFIG_USE_COILS && CONFIG_USE_DISCRETE_INPUTS
+	numHoldingRegisters = min(numCoils, numDiscreteInputs);
+	if (numHoldingRegisters > 0)
+	{
+		workModes = (uint16_t*)malloc(numHoldingRegisters * sizeof(uint16_t));
+		workModeArgs = (int32_t*)malloc(numHoldingRegisters * sizeof(int32_t));
+	}
+#else
+	numHoldingRegisters = 0;
+#endif
+
+#if CONFIG_USE_LED_OUTPUT
+	pinMode(LED_BUILTIN, OUTPUT);
+	digitalWrite(LED_BUILTIN, LOW);
+#endif
+	
+	readInitConfig();
+
+	Serial.begin(BAUD_RATE[configRegister.baudId]);
+	while (!Serial);
+
+	Serial.println(configRegister.version);
+	Serial.println(configRegister.slaveId);
+	Serial.println(configRegister.baudId);
+	//Serial.println(configRegister.inchingMs);
+
+	while (1)
+	{
+		;
+	}
+
+
+
 	//ModbusRTUServer Config
-	if (!ModbusRTUServer.begin(slave_id, BAUD_RATE[baud_id]))
+	if (!ModbusRTUServer.begin(configRegister.slaveId, BAUD_RATE[configRegister.baudId]))
 	{
 		while (1);
 	}
@@ -326,29 +281,21 @@ void setup()
 	if (numInputRegisters > 0)
 		ModbusRTUServer.configureInputRegisters(0x00, numInputRegisters);
 
-	if (numHoldingRegisters > 0)
+	uint8_t numConfigRegisters = CONFIG_REGISTER_COUNT + numHoldingRegisters;
+	if (numConfigRegisters > 0)
 	{
-		ModbusRTUServer.configureHoldingRegisters(0x00, numHoldingRegisters);
+		ModbusRTUServer.configureHoldingRegisters(0x00, numConfigRegisters);
 
-		ModbusRTUServer.holdingRegisterWrite(0x00, slave_id);
-		ModbusRTUServer.holdingRegisterWrite(0x01, baud_id);
-		ModbusRTUServer.holdingRegisterWrite(0x02, 0x0000);		//reset
-		ModbusRTUServer.holdingRegisterWrite(0x03, WorkMode);
-		ModbusRTUServer.holdingRegisterWrite(0x04, input_interval_ms);
-		ModbusRTUServer.holdingRegisterWrite(0x05, led_interval_ms);
-		ModbusRTUServer.holdingRegisterWrite(0x06, run_count);
-		ModbusRTUServer.holdingRegisterWrite(0x07, 0x0000);		//reserve
+		uint16_t* config = (uint16_t*)&configRegister;
+		for(uint8_t i = 0; i < CONFIG_REGISTER_COUNT;i ++)
+			ModbusRTUServer.holdingRegisterWrite(i, config[i]);
+
+		for (uint8_t i = 0; i < numHoldingRegisters; i++)
+			ModbusRTUServer.holdingRegisterWrite(CONFIG_REGISTER_COUNT + i, workModes[i]);
 	}
 
-#if CONFIG_USE_LED_OUTPUT
-	led_next_timer = timer0_millis + led_interval_ms;
-	if (led_interval_ms == 0x0000 || led_interval_ms == 0xFFFF)
-	{
-		digitalWrite(LED_BUILTIN, led_interval_ms == 0xFFFF);
-	}
-#endif
-
-	input_next_timer = timer0_millis + input_interval_ms;
+	led_next_timer = timer0_millis + LED_TRUN_INTERVAL_MS;
+	input_next_timer = timer0_millis + DINPUT_SHAKE_INTERVAL_MS;
 }
 
 // the loop function runs over and over again until power down or reset
@@ -359,14 +306,14 @@ void loop()
 #endif
 
 	ModbusRTUServer.poll();
-	updateConfig();
+	readUpdateConfig();
 
 
 #if CONFIG_USE_LED_OUTPUT
-	if (led_interval_ms != 0x0000 && led_interval_ms != 0xFFFF && timer0_millis > led_next_timer)
+	if (timer0_millis > led_next_timer)
 	{
 		digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-		led_next_timer = timer0_millis + led_interval_ms;
+		led_next_timer = timer0_millis + LED_TRUN_INTERVAL_MS;
 	}
 #endif	
 
@@ -391,41 +338,80 @@ void loop()
 
 #if CONFIG_USE_DISCRETE_INPUTS
 
-	if (timer0_millis < input_next_timer) return;
+	for (uint8_t i = 0; i < numHoldingRegisters; i++)
+	{
+		uint8_t args = workModes[i] >> 8;
+		BindingMode workMode = (BindingMode)(workModes[i] & 0xFF);
 
-	int8_t only_index = -1;
-	uint8_t minNum = min(numCoils, numDiscreteInputs);
+		if (workMode == BindingMode::Inching)
+		{
+			if (workModeArgs[i] <= 0)
+			{
+				workModeArgs[i] = 0;
+				continue;
+			}
+
+			if (workModeArgs[i] <= timer0_millis)
+			{
+				workModeArgs[i] = 0;
+				ModbusRTUServer.coilWrite(i, 0x00);
+			}
+		}
+		else if (workMode == BindingMode::Only)
+		{
+			//workModeArgs[i] = -1;
+		}
+	}
+
+	if (timer0_millis < input_next_timer) return;
 	for (uint8_t i = 0; i < numDiscreteInputs; i++)
 	{
 		bool newValue = digitalRead(discreteInputPins[i]) == (DISCRETE_INPUT_MODE == INPUT_PULLUP ? 0x00 : 0x01);
 		bool oldValue = ModbusRTUServer.discreteInputRead(i) == 0x01;
+
+		bool inputRelease = newValue != oldValue && !newValue;		//输入释放
 		if(newValue != oldValue)	ModbusRTUServer.discreteInputWrite(i, newValue);
 
 #if CONFIG_USE_COILS
-		if (WorkMode == BindingMode::Non_Lock)
+		if (i >= numHoldingRegisters) continue;
+
+		uint8_t args = workModes[i] >> 8;
+		BindingMode workMode = (BindingMode)(workModes[i] & 0xFF);
+
+		if (workMode == BindingMode::Non_Lock)
 		{
-			if(i < minNum) ModbusRTUServer.coilWrite(i, newValue);
+			ModbusRTUServer.coilWrite(i, newValue);
 		}
-		else if (WorkMode == BindingMode::Lock)
+		else if (workMode == BindingMode::Lock)
 		{
-			if (newValue != oldValue && !newValue)	//输入释放
+			if (inputRelease)	//输入释放
 			{
-				if (i < minNum) ModbusRTUServer.coilWrite(i, !(ModbusRTUServer.coilRead(i) == 0x01));
+				ModbusRTUServer.coilWrite(i, !(ModbusRTUServer.coilRead(i) == 0x01));
 			}
 		}
-		else if (WorkMode == BindingMode::Only)
+		else if (workMode == BindingMode::Inching)	//点动模式
 		{
-			if (newValue != oldValue && !newValue && only_index == -1)	//输入释放
+			if (inputRelease)	//输入释放
 			{
-				only_index = i;
+				if (args <= 1) args = 1;
+				workModeArgs[i] = timer0_millis + args * INCHING_INTERVAL_MS;
+				ModbusRTUServer.coilWrite(i, !(ModbusRTUServer.coilRead(i) == 0x01));
+			}
+		}
+		else if (workMode == BindingMode::Only)
+		{
+			if (inputRelease && workModeArgs[i] == -1)	//输入释放
+			{
+				//if((args >> i) & 0x01)				
+				workModeArgs[i] = i;
 				for (uint8_t j = 0; j < numCoils; j++)
-					ModbusRTUServer.coilWrite(j, j == only_index ? 0x01 : 0x00);
+					ModbusRTUServer.coilWrite(j, j == workModeArgs[i] ? 0x01 : 0x00);
 			}
 		}
 #endif
 	}	
 
-	input_next_timer = timer0_millis + input_interval_ms;
+	input_next_timer = timer0_millis + DINPUT_SHAKE_INTERVAL_MS;
 #endif
 
 	

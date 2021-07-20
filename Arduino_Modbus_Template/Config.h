@@ -5,14 +5,18 @@
 	Modbus:	nDO, nDI, nAI(0~5V)
 */
 
+
+#define		ARDUINO_VERSION					0x0101		//固件版本号，高字节表示大版本号，低字节小版本号
+#define		LED_TRUN_INTERVAL_MS			500			//LED 翻转间隔时间 ms
+#define		DINPUT_SHAKE_INTERVAL_MS		8			//数字信号输入防抖间隔时间 ms
+#define		INCHING_INTERVAL_MS				250			//点动模式的单位间隔时间 ms
+
 /*	编译前配置 */
 //============================ Configuration Begin ===========================
 
 #define		DEFAULT_SLAVE_ID				0x01		//配置设备的默认地址，		//0x01~0xFE
 #define		DEFAULT_BAUD_ID					0x00		//配置设备默认的波特率索引	//{ 9600, 19200, 38400, 115200, 230400, 460800, 921600 }
 #define		DEFAULT_WORK_MODE				0x00		//配置设备默认的工作模式	//{Default=0x00, Non_Lock=0x01, Lock=0x02, Only=0x03}
-#define		DEFAULT_INPUT_INTERVAL			8			//配置离散输入默认去抖间隔时间 ms	//0~5000
-#define		DEFAULT_LED_INTERVAL			500			//配置LED默认值闪烁间隔时间 ms，	//0x0000表示常闭，0xFFFF表示常开
 
 #define		CONFIG_USE_WDT					true		//配置是否使用看门狗
 #define		CONFIG_USE_COILS				true		//配置是否使用线圈输出（数字输出）
