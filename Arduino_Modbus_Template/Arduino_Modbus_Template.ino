@@ -58,10 +58,14 @@ DeviceConfig* configPtr = (DeviceConfig*)configHRR;
 void resetConfig()
 {
 	uint8_t configSize = sizeof(DeviceConfig);
-	DeviceConfig defaultConfig = DeviceConfig_default;
-	defaultConfig.runCount = deviceConfig.runCount;		//运行次数不可恢复
+	//DeviceConfig defaultConfig = DeviceConfig_default;
+	//defaultConfig.runCount = deviceConfig.runCount;		//运行次数不可重置
 
-	eeprom_write_block(&defaultConfig, (uint16_t*)0x00, configSize);
+	deviceConfig.slaveId = DEFAULT_SLAVE_ID;
+	deviceConfig.baudId = DEFAULT_BAUD_ID;
+
+	eeprom_write_block(&deviceConfig, (uint16_t*)0x00, configSize);
+	//eeprom_write_block(&defaultConfig, (uint16_t*)0x00, configSize);
 	for (uint8_t i = 0; i < numHoldingRegisters; i++)
 		eeprom_write_word((uint16_t*)(configSize + (i * 2)), 0x0000);
 
@@ -80,8 +84,12 @@ void readInitConfig()
 	deviceConfig.runCount++;
 	if (deviceConfig.reset != 0x0000)				deviceConfig.reset = 0x0000;
 	if (deviceConfig.version != ARDUINO_VERSION)	deviceConfig.version = ARDUINO_VERSION;
+
+	//deviceConfig.baudId = deviceConfig.baudId & 0xFF;
+	//deviceConfig.slaveId = deviceConfig.slaveId & 0xFF;
+
 	if (deviceConfig.baudId > sizeof(BAUD_RATE) / sizeof(uint32_t))		deviceConfig.baudId = DEFAULT_BAUD_ID;
-	if (deviceConfig.slaveId == 0x00 || deviceConfig.slaveId == 0xFF)	deviceConfig.slaveId = DEFAULT_SLAVE_ID;
+	if (deviceConfig.slaveId == 0x00 || deviceConfig.slaveId >= 0xFF)	deviceConfig.slaveId = DEFAULT_SLAVE_ID;
 
 	for (uint8_t i = 0; i < numHoldingRegisters; i ++)
 	{
@@ -94,7 +102,7 @@ void readInitConfig()
 	}
 
 	eeprom_write_block(&deviceConfig, (uint16_t*)0x00, configSize);
-	delay(100);
+	delay(200);
 }
 
 /// <summary>
@@ -178,13 +186,14 @@ void readUpdateConfig()
 void setup() 
 {
 	delay(100);
-	//clearEEPROM();	
+	//clearEEPROM();
 
 #if CONFIG_USE_COILS	//配置线圈，数字输出信号
 	numCoils = sizeof(coilPins) / sizeof(uint8_t);
 	for (uint8_t i = 0; i < numCoils; i++)
 	{
 		pinMode(coilPins[i], OUTPUT);
+		delay(2);
 	}
 #endif
 
@@ -193,6 +202,7 @@ void setup()
 	for (uint8_t i = 0; i < numDiscreteInputs; i++)
 	{
 		pinMode(discreteInputPins[i], DISCRETE_INPUT_MODE);
+		delay(2);
 	}
 #endif
 
@@ -201,6 +211,7 @@ void setup()
 	for (uint8_t i = 0; i < numInputRegisters; i++)
 	{
 		pinMode(inputRegisterPins[i], INPUT);
+		delay(2);
 	}
 #endif
 
@@ -228,7 +239,7 @@ void setup()
 	{
 		;
 	}
-
+	
 	delay(100);		//ModbusRTUServer Config
 	if (!ModbusRTUServer.begin(deviceConfig.slaveId, BAUD_RATE[deviceConfig.baudId]))
 	{
@@ -257,7 +268,7 @@ void setup()
 		for (uint8_t i = 0; i < numHoldingRegisters; i++)
 			ModbusRTUServer.holdingRegisterWrite(CONFIG_REGISTER_COUNT + i, workModes[i]);
 	}
-
+	
 	led_next_timer = timer0_millis + LED_TRUN_INTERVAL_MS;
 	input_next_timer = timer0_millis + DINPUT_SHAKE_INTERVAL_MS;
 
@@ -307,7 +318,7 @@ void loop()
 #endif
 
 
-#if CONFIG_USE_DISCRETE_INPUTS
+#if CONFIG_USE_DISCRETE_INPUTS	
 	for (uint8_t i = 0; i < numHoldingRegisters; i++)
 	{
 		uint8_t args = workModes[i] >> 8;
@@ -331,15 +342,19 @@ void loop()
 		{
 			workModeArgs[i] = -1;
 		}
-	}
+	}	
 
 	if (timer0_millis < input_next_timer) return;
 	for (uint8_t i = 0; i < numDiscreteInputs; i++)
 	{
 		bool newValue = digitalRead(discreteInputPins[i]) == (DISCRETE_INPUT_MODE == INPUT_PULLUP ? 0x00 : 0x01);
-		bool oldValue = ModbusRTUServer.discreteInputRead(i) == 0x01;
 
-		bool inputRelease = newValue != oldValue && !newValue;		//输入释放状态
+		//Serial.print(i); Serial.print("("); Serial.print(discreteInputPins[i]); Serial.print(")"); Serial.print("-");
+		//Serial.println(newValue);
+		//delay(500);
+
+		bool oldValue = ModbusRTUServer.discreteInputRead(i) == 0x01;
+		bool inputRelease = newValue != oldValue && !newValue;			//输入释放状态
 		if(newValue != oldValue)	ModbusRTUServer.discreteInputWrite(i, newValue);
 
 #if CONFIG_USE_COILS

@@ -7,8 +7,8 @@
 struct DeviceConfig_s
 {
 	uint16_t version;	//固件版本号
-	uint16_t slaveId;	//设备地址
-	uint16_t baudId;	//波特率ID
+	uint16_t slaveId;	//设备地址，低8位有效
+	uint16_t baudId;	//波特率ID，低8位有效
 	uint16_t reset;		//重启设备
 	uint16_t runCount;	//运行次数
 	uint16_t reserve0;	//保留 0
