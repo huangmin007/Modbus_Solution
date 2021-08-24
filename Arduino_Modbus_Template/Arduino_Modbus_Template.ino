@@ -215,7 +215,7 @@ void setup()
 	}
 #endif
 
-#if CONFIG_USE_COILS && CONFIG_USE_DISCRETE_INPUTS	//关联输入输出
+#if CONFIG_USE_COILS && CONFIG_USE_DISCRETE_INPUTS	//关联输入输出工作模式及参数
 	numHoldingRegisters = min(numCoils, numDiscreteInputs);
 	if (numHoldingRegisters > 0)
 	{
@@ -261,10 +261,12 @@ void setup()
 	{
 		ModbusRTUServer.configureHoldingRegisters(0x00, numConfigRegisters);
 
+		//设备参数保持寄存器配置项
 		uint16_t* config = (uint16_t*)&deviceConfig;
 		for (uint8_t i = 0; i < CONFIG_REGISTER_COUNT; i++)
 			ModbusRTUServer.holdingRegisterWrite(i, config[i]);
 
+		//工作模式的保持寄存器配置项
 		for (uint8_t i = 0; i < numHoldingRegisters; i++)
 			ModbusRTUServer.holdingRegisterWrite(CONFIG_REGISTER_COUNT + i, workModes[i]);
 	}
@@ -318,7 +320,7 @@ void loop()
 #endif
 
 
-#if CONFIG_USE_DISCRETE_INPUTS	
+#if CONFIG_USE_DISCRETE_INPUTS && CONFIG_USE_COILS
 	for (uint8_t i = 0; i < numHoldingRegisters; i++)
 	{
 		uint8_t args = workModes[i] >> 8;
@@ -342,8 +344,11 @@ void loop()
 		{
 			workModeArgs[i] = -1;
 		}
-	}	
+	}
+#endif
 
+
+#if CONFIG_USE_DISCRETE_INPUTS
 	if (timer0_millis < input_next_timer) return;
 	for (uint8_t i = 0; i < numDiscreteInputs; i++)
 	{
@@ -352,11 +357,11 @@ void loop()
 		//Serial.print(i); Serial.print("("); Serial.print(discreteInputPins[i]); Serial.print(")"); Serial.print("-");
 		//Serial.println(newValue);
 		//delay(500);
-
+		
 		bool oldValue = ModbusRTUServer.discreteInputRead(i) == 0x01;
 		bool inputRelease = newValue != oldValue && !newValue;			//输入释放状态
 		if(newValue != oldValue)	ModbusRTUServer.discreteInputWrite(i, newValue);
-
+		
 #if CONFIG_USE_COILS
 		if (i >= numHoldingRegisters) continue;
 
