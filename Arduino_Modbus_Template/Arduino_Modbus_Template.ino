@@ -354,10 +354,6 @@ void loop()
 	{
 		bool newValue = digitalRead(discreteInputPins[i]) == (DISCRETE_INPUT_MODE == INPUT_PULLUP ? 0x00 : 0x01);
 
-		//Serial.print(i); Serial.print("("); Serial.print(discreteInputPins[i]); Serial.print(")"); Serial.print("-");
-		//Serial.println(newValue);
-		//delay(500);
-		
 		bool oldValue = ModbusRTUServer.discreteInputRead(i) == 0x01;
 		bool inputRelease = newValue != oldValue && !newValue;			// ‰»Î Õ∑≈◊¥Ã¨
 		if(newValue != oldValue)	ModbusRTUServer.discreteInputWrite(i, newValue);

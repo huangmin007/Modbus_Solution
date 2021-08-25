@@ -4,7 +4,6 @@
 	配置设备 ModbusRTU 设备输入输出
 	Modbus:	nDO, nDI, nAI(0~5V)
 */
-//#include "Arduino.h"
 
 
 #define		LED_TRUN_INTERVAL_MS			500			//LED 翻转间隔时间 ms
@@ -31,7 +30,7 @@ constexpr uint8_t coilPins[] = { 7, 8, 9 };			//配置线圈输出引脚
 
 #if CONFIG_USE_DISCRETE_INPUTS
 #define		DISCRETE_INPUT_MODE				INPUT_PULLUP			//配置引脚输入模式：INPUT, INPUT_PULLUP
-constexpr uint8_t discreteInputPins[] = { 2, 3, 4, 5 };				//配置离散输入引脚
+constexpr uint8_t discreteInputPins[] = { 2, 3, 4, 5 };				//配置离散输入引脚，注意不可使用2号引脚做为离散输入
 #endif
 
 #if CONFIG_USE_INPUT_REGISTERS

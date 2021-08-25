@@ -52,7 +52,7 @@ void (*resetArduino)() = 0x0000;
 /// </summary>
 void clearEEPROM()
 {
-	for (int i = 0; i < 512/*E2END + 1*/; i++)
+	for (int i = 0; i < E2END + 1; i++)
 	{
 		eeprom_write_byte((uint8_t*)i, 0x00);
 	}
