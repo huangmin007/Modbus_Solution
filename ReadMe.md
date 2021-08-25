@@ -7,6 +7,7 @@
 > - Arduion_Modbus_FreeRTOS 未完成，将来即使完成，也只能支持 Mage2560 大容量单片机，但会比 Arduino_Modebus_Template 功能更丰富
 > - Arduion_Modbus_Template 可做为小容量单片机，自定义 ModbusRTU 产品使用，所开放的引脚由 Config.h 配置
 > - 功能支持 nDO, nDI, nAI(0~5V)
+> - ModebusRTU 数据协议，见表《软硬件通信协议ModbusRTU_模版.xlsx》数据协议
 
 - #### 使用
 > 1. 安装 Arduion IDE, 下载 [ArduinoModbus](https://github.com/arduino-libraries/ArduinoModbus) 库，复制到 Arduion 安装目录/libraries/ 
