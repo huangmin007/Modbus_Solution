@@ -1,7 +1,12 @@
 #pragma once
 
-#define		ARDUINO_VERSION				0x0101		//固件版本号，高字节表示大版本号，低字节小版本号
-#define		CONFIG_REGISTER_COUNT		8			//参数配置数据数量
+#define		ARDUINO_VERSION					0x0101		//固件版本号，高字节表示大版本号，低字节小版本号
+
+#define		LED_TRUN_INTERVAL_MS			500			//LED 翻转间隔时间 ms
+#define		DINPUT_SHAKE_INTERVAL_MS		8			//数字信号输入防抖间隔时间 ms
+#define		INCHING_INTERVAL_MS				250			//点动模式的单位间隔时间 ms
+
+#define		CONFIG_REGISTER_COUNT			8			//参数配置数据数量
 
 #pragma pack (1)
 struct DeviceConfig_s
