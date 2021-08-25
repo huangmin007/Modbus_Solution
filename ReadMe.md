@@ -12,7 +12,7 @@
 > 1. 安装 Arduion IDE, 下载 [ArduinoModbus](https://github.com/arduino-libraries/ArduinoModbus) 库，复制到 Arduion 安装目录/libraries/ 
 > 2. 跟据项目需求，配置 Config.h 头文件
 ``` C
-#define		DEFAULT_SLAVE_ID				0x01	        //配置设备的默认地址	//0x01~0xFE
+#define		DEFAULT_SLAVE_ID				0x01		//配置设备的默认地址		//0x01~0xFE
 #define		DEFAULT_BAUD_ID					0x00		//配置设备默认的波特率索引	//{ 9600, 19200, 38400, 115200, 230400, 460800, 921600 }
 
 #define		CONFIG_USE_WDT					false		//配置是否使用看门狗
@@ -27,12 +27,13 @@ constexpr uint8_t coilPins[] = { 3, 4, 5, 6, 7 };			//配置线圈输出引脚
 #endif
 
 #if CONFIG_USE_DISCRETE_INPUTS
-#define		DISCRETE_INPUT_MODE			INPUT_PULLUP				//配置引脚输入模式：INPUT, INPUT_PULLUP
+#define		DISCRETE_INPUT_MODE		INPUT_PULLUP			//配置引脚输入模式：INPUT, INPUT_PULLUP
 constexpr uint8_t discreteInputPins[] = { 8, 9, 10, 11, 12};		//配置离散输入引脚，注意不可使用 2 号引脚做为离散输入
 #endif
 
 #if CONFIG_USE_INPUT_REGISTERS
 constexpr uint8_t inputRegisterPins[] = { A0, A1, A2, A3, A4, A5 };	//配置输入引脚模拟
+#endif
 ```
 > 3. 烧录 Arduion 单片机
 
