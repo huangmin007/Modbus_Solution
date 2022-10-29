@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arduino_Modbus_Template", "
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arduino_Modbus_FreeRTOS", "Arduino_Modbus_FreeRTOS\Arduino_Modbus_FreeRTOS.vcxproj", "{9E6FE777-A016-4EA0-A57E-15602E4D0900}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arduino_MBAT_Template", "Arduino_MBAT_Template\Arduino_MBAT_Template.vcxproj", "{189226F4-D1B6-49B8-AF48-566EC0028B8A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,6 +39,12 @@ Global
 		{9E6FE777-A016-4EA0-A57E-15602E4D0900}.Release|Any CPU.ActiveCfg = Release|Win32
 		{9E6FE777-A016-4EA0-A57E-15602E4D0900}.Release|x86.ActiveCfg = Release|Win32
 		{9E6FE777-A016-4EA0-A57E-15602E4D0900}.Release|x86.Build.0 = Release|Win32
+		{189226F4-D1B6-49B8-AF48-566EC0028B8A}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{189226F4-D1B6-49B8-AF48-566EC0028B8A}.Debug|x86.ActiveCfg = Debug|Win32
+		{189226F4-D1B6-49B8-AF48-566EC0028B8A}.Debug|x86.Build.0 = Debug|Win32
+		{189226F4-D1B6-49B8-AF48-566EC0028B8A}.Release|Any CPU.ActiveCfg = Release|Win32
+		{189226F4-D1B6-49B8-AF48-566EC0028B8A}.Release|x86.ActiveCfg = Release|Win32
+		{189226F4-D1B6-49B8-AF48-566EC0028B8A}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
