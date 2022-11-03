@@ -123,22 +123,35 @@ static uint16_t crc16(uint8_t address, uint8_t* pduFrame, uint16_t pduLen)
 
 #pragma endregion
 
+enum mb_status:uint8_t
+{
+    MB_NO_ERROR,
+    MB_READ_TIMEOUT,
+    MB_WRITE_TIMEOUT,
+    MB_FRAME_ERROR,
+    MB_CRC_ERROR,
+    MB_OUT_OF_RANGE,
+};
 
+static const String MB_STATUS_STRING[] = {"MB_NO_ERROR", "MB_READ_TIMEOUT", "MB_WRITE_TIMEOUT", 
+                                        "MB_FRAME_ERROR", "MB_CRC_ERROR", "MB_OUT_OF_RANGE"};
 
-
+/// <summary>
+/// https://blog.csdn.net/weixin_42229902/article/details/122057454
+/// </summary>
 class ModbusSerial
 {
 private:
-    SoftwareSerial* _port;
+    Stream* _port;
+
     uint32_t _t15;      // inter character time out
     uint32_t _t35;      // frame delay
-    bool send(uint8_t* frame, uint8_t length);
-    bool receive(uint8_t* frame);
+    mb_status _mb_status;
 
     uint8_t _len = 0;
     uint16_t _crc = 0;
-    uint16_t _tms = 0;
-    const uint16_t _timeout = 500;
+    uint32_t _tms = 0;
+    uint16_t _timeout = 500;
 
     uint8_t _sendBuffer[64];
     uint8_t _receiveBuffer[64];
@@ -146,12 +159,19 @@ private:
 public:
     ModbusSerial();
     ~ModbusSerial();
-    bool config(SoftwareSerial* port, long baud);
+    void config(SoftwareSerial* port, uint32_t baud);
+    void config(HardwareSerial* port, uint32_t baud);
 
-    int8_t writeSingleCoil(uint8_t slave_addr, uint16_t coil_addr, bool value);
-    int8_t writeMultipleCoils(uint8_t slave_addr, uint16_t coil_start_addr, uint16_t coil_mb, uint8_t value);
+    bool writeSingleCoil(uint8_t slave_addr, uint16_t coil_addr, bool value);
+    bool writeMultipleCoils(uint8_t slave_addr, uint16_t coil_start_addr, const bool value[], uint8_t value_length);
+    bool writeMultipleCoils(uint8_t slave_addr, uint16_t coil_start_addr, uint16_t coil_mb, uint16_t value);
     
     uint16_t readCoils(uint8_t slave_addr, uint16_t coil_start_addr, uint16_t coil_mb);
+
+    inline mb_status getLastError()
+    {
+        return _mb_status;
+    }
 
 };
 
